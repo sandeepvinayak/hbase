@@ -50,6 +50,7 @@ import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.testclassification.ReplicationTests;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -167,6 +168,74 @@ public class TestWALEntrySinkFilter {
     assertEquals(count, FILTERED.get() + UNFILTERED.get());
   }
 
+
+  /**
+   * Test filter. Filter will filter out any write time that is <= 5 (BOUNDARY). We count how many
+   * items we filter out and we count how many cells make it through for distribution way down below
+   * in the Table#batch implementation. Puts in place a custom DevNullConnection so we can insert
+   * our counting Table.
+   * @throws IOException
+   */
+  @Test
+  public void testWALEntryFilterReplication() throws IOException, InterruptedException {
+    Configuration conf = HBaseConfiguration.create();
+    // Make it so our filter is instantiated on construction of ReplicationSink.
+    conf.setClass(DummyAsyncRegistry.REGISTRY_IMPL_CONF_KEY, DevNullAsyncRegistry.class,
+        DummyAsyncRegistry.class);
+    conf.setClass(WALEntrySinkFilter.WAL_ENTRY_FILTER_KEY,
+        FilterReplicationMetaData.class, WALEntrySinkFilter.class);
+    conf.setClass(ClusterConnectionFactory.HBASE_SERVER_CLUSTER_CONNECTION_IMPL,
+        DevNullAsyncClusterConnection.class, AsyncClusterConnection.class);
+    ReplicationSink sink = new ReplicationSink(conf, STOPPABLE);
+    // Create some dumb walentries.
+    List<AdminProtos.WALEntry> entries = new ArrayList<>();
+    AdminProtos.WALEntry.Builder entryBuilder = AdminProtos.WALEntry.newBuilder();
+    // Need a tablename.
+    ByteString tableName = ByteString.copyFromUtf8(TableName.valueOf("ReplicationMetaDataTable").toString());
+    // Add WALEdit Cells to Cells List. The way edits arrive at the sink is with protos
+    // describing the edit with all Cells from all edits aggregated in a single CellScanner.
+    final List<Cell> cells = new ArrayList<>();
+    int count = BOUNDARY * 2;
+    for (int i = 0; i < count; i++) {
+      Thread.sleep(10);
+      byte[] bytes = Bytes.toBytes(EnvironmentEdgeManager.currentTime());
+      // Create a wal entry. Everything is set to the current index as bytes or int/long.
+      entryBuilder.clear();
+      entryBuilder.setKey(entryBuilder.getKeyBuilder().setLogSequenceNumber(i)
+          .setEncodedRegionName(ByteString.copyFrom(bytes)).setWriteTime(i).setTableName(tableName)
+          .build());
+      // Lets have one Cell associated with each WALEdit.
+      entryBuilder.setAssociatedCellCount(1);
+      entries.add(entryBuilder.build());
+      // We need to add a Cell per WALEdit to the cells array.
+      CellBuilder cellBuilder = CellBuilderFactory.create(CellBuilderType.DEEP_COPY);
+      // Make cells whose row, family, cell, value, and ts are == 'i'.
+      Cell cell = cellBuilder.setRow(bytes).setFamily(Bytes.toBytes("TimestampFamily")).setQualifier(Bytes.toBytes("TimestampQualifier"))
+          .setType(Cell.Type.Put).setTimestamp(i).setValue(bytes).build();
+      cells.add(cell);
+    }
+    // Now wrap our cells array in a CellScanner that we can pass in to replicateEntries. It has
+    // all Cells from all the WALEntries made above.
+    CellScanner cellScanner = new CellScanner() {
+      // Set to -1 because advance gets called before current.
+      int index = -1;
+
+      @Override
+      public Cell current() {
+        return cells.get(index);
+      }
+
+      @Override
+      public boolean advance() throws IOException {
+        index++;
+        return index < cells.size();
+      }
+    };
+    // Call our sink.
+    sink.replicateEntries(entries, cellScanner, null, null, null);
+    // Check what made it through and what was filtered.
+  }
+
   /**
    * Simple filter that will filter out any entry wholse writeTime is <= 5.
    */
@@ -187,6 +256,25 @@ public class TestWALEntrySinkFilter {
         FILTERED.incrementAndGet();
       }
       return b;
+    }
+  }
+
+  /**
+   * Simple filter that will filter out any entry for hbase repliation meta data table
+   */
+  public static class FilterReplicationMetaData
+      implements WALEntrySinkFilter {
+    public FilterReplicationMetaData() {
+    }
+
+    @Override
+    public void init(AsyncConnection conn) {
+      // Do nothing.
+    }
+
+    @Override
+    public boolean filter(TableName table, long writeTime) {
+      return table.getNameAsString().equals("HBaseReplicationMetaData");
     }
   }
 

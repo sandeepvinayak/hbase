@@ -17,7 +17,12 @@
  */
 package org.apache.hadoop.hbase.replication.regionserver;
 
+import java.io.BufferedWriter;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -41,6 +46,7 @@ import org.apache.hadoop.hbase.Stoppable;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.client.AsyncClusterConnection;
+import org.apache.hadoop.hbase.client.AsyncConnection;
 import org.apache.hadoop.hbase.client.AsyncTable;
 import org.apache.hadoop.hbase.client.ClusterConnectionFactory;
 import org.apache.hadoop.hbase.client.Delete;
@@ -51,10 +57,12 @@ import org.apache.hadoop.hbase.client.Row;
 import org.apache.hadoop.hbase.replication.ReplicationUtils;
 import org.apache.hadoop.hbase.security.UserProvider;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.FutureUtils;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.wal.WALEdit;
 import org.apache.yetus.audience.InterfaceAudience;
+import org.omg.PortableInterceptor.SYSTEM_EXCEPTION;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -93,6 +101,7 @@ public class ReplicationSink {
   private long hfilesReplicated = 0;
   private SourceFSConfigurationProvider provider;
   private WALEntrySinkFilter walEntrySinkFilter;
+  private Writer replicationMetrcsWriter;
 
   /**
    * Create a sink for replication
@@ -102,6 +111,9 @@ public class ReplicationSink {
    */
   public ReplicationSink(Configuration conf, Stoppable stopper)
       throws IOException {
+    this.replicationMetrcsWriter = new BufferedWriter(new OutputStreamWriter(
+        new FileOutputStream("/tmp/replicationtest.txt", true), "utf-8"));
+
     this.conf = HBaseConfiguration.create(conf);
     decorateConf();
     this.metrics = new MetricsSink();
@@ -131,7 +143,28 @@ public class ReplicationSink {
     if (filter != null) {
       filter.init(getConnection());
     }
-    return filter;
+
+
+    return new FilterReplicationMetaData();
+  }
+
+  /**
+   * Simple filter that will filter out any entry for hbase repliation meta data table
+   */
+  public static class FilterReplicationMetaData
+      implements WALEntrySinkFilter {
+    public FilterReplicationMetaData() {
+    }
+
+    @Override
+    public void init(AsyncConnection conn) {
+      // Do nothing.
+    }
+
+    @Override
+    public boolean filter(TableName table, long writeTime) {
+      return table.getNameAsString().equals("ReplicationMetaDataTable");
+    }
   }
 
   /**
@@ -180,17 +213,23 @@ public class ReplicationSink {
         TableName table = TableName.valueOf(entry.getKey().getTableName().toByteArray());
         if (this.walEntrySinkFilter != null) {
           if (this.walEntrySinkFilter.filter(table, entry.getKey().getWriteTime())) {
-            // Skip Cells in CellScanner associated with this entry.
             int count = entry.getAssociatedCellCount();
             for (int i = 0; i < count; i++) {
-              // Throw index out of bounds if our cell count is off
-              if (!cells.advance()) {
-                throw new ArrayIndexOutOfBoundsException("Expected=" + count + ", index=" + i);
+            if (cells.advance()) {
+              Cell cell = cells.current();
+              String qualifier = Bytes.toString(cell.getQualifierArray(), cell.getQualifierOffset(), cell.getQualifierLength());
+
+              if (qualifier.equals("TimestampQualifier")) {
+                Long tsFromCell = Bytes.toLong(cell.getValueArray(), cell.getValueOffset(), cell.getValueLength());
+                long age = EnvironmentEdgeManager.currentTime() - tsFromCell;
+                replicationMetrcsWriter.write("ReplicationLag:"+age+":"+replicationClusterId+"\n");
+                replicationMetrcsWriter.flush();
               }
-            }
+            }}
             continue;
           }
         }
+
         Cell previousCell = null;
         Mutation mutation = null;
         int count = entry.getAssociatedCellCount();
