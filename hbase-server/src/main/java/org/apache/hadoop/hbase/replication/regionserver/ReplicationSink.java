@@ -225,6 +225,8 @@ public class ReplicationSink {
                 Long tsFromCell = Bytes.toLong(cell.getValueArray(), cell.getValueOffset(), cell.getValueLength());
                 long currentTS = EnvironmentEdgeManager.currentTime();
                 LOG.info("HACKTEST6: replicateEntries from"+replicationClusterId+":"+tsFromCell+":"+currentTS);
+                LOG.info("HACKTEST7: replicateEntries from"+cell.getValueArray()+":"+cell.getValueOffset()+":"+cell.getValueLength());
+
                 long age = currentTS - tsFromCell;
                 replicationMetrcsWriter.write("ReplicationLag:"+age+":"+replicationClusterId+"\n");
                 replicationMetrcsWriter.flush();
