@@ -199,6 +199,7 @@ public class ReplicationSink {
   public void replicateEntries(List<WALEntry> entries, final CellScanner cells,
       String replicationClusterId, String sourceBaseNamespaceDirPath,
       String sourceHFileArchiveDirPath) throws IOException {
+    LOG.info("HACKTEST1: replicateEntries from"+replicationClusterId);
     if (entries.isEmpty()) return;
     // Very simple optimization where we batch sequences of rows going
     // to the same table.
@@ -207,21 +208,24 @@ public class ReplicationSink {
       // Map of table => list of Rows, grouped by cluster id, we only want to flushCommits once per
       // invocation of this method per table and cluster id.
       Map<TableName, Map<List<UUID>, List<Row>>> rowMap = new TreeMap<>();
-
+      LOG.info("HACKTEST2: replicateEntries from"+replicationClusterId);
       Map<List<String>, Map<String, List<Pair<byte[], List<String>>>>> bulkLoadsPerClusters = null;
       for (WALEntry entry : entries) {
         TableName table = TableName.valueOf(entry.getKey().getTableName().toByteArray());
         if (this.walEntrySinkFilter != null) {
           if (this.walEntrySinkFilter.filter(table, entry.getKey().getWriteTime())) {
             int count = entry.getAssociatedCellCount();
+            LOG.info("HACKTEST3: replicateEntries from"+replicationClusterId+":"+count);
             for (int i = 0; i < count; i++) {
             if (cells.advance()) {
               Cell cell = cells.current();
               String qualifier = Bytes.toString(cell.getQualifierArray(), cell.getQualifierOffset(), cell.getQualifierLength());
-
-              if (qualifier.equals("TimestampQualifier")) {
+              LOG.info("HACKTEST4: replicateEntries from"+replicationClusterId+":"+qualifier);
+              if (qualifier.equals("Timestamp")) {
                 Long tsFromCell = Bytes.toLong(cell.getValueArray(), cell.getValueOffset(), cell.getValueLength());
-                long age = EnvironmentEdgeManager.currentTime() - tsFromCell;
+                long currentTS = EnvironmentEdgeManager.currentTime();
+                LOG.info("HACKTEST6: replicateEntries from"+replicationClusterId+":"+tsFromCell+":"+currentTS);
+                long age = currentTS - tsFromCell;
                 replicationMetrcsWriter.write("ReplicationLag:"+age+":"+replicationClusterId+"\n");
                 replicationMetrcsWriter.flush();
               }
