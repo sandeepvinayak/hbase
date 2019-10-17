@@ -210,7 +210,7 @@ public class TestWALEntrySinkFilter {
       // We need to add a Cell per WALEdit to the cells array.
       CellBuilder cellBuilder = CellBuilderFactory.create(CellBuilderType.DEEP_COPY);
       // Make cells whose row, family, cell, value, and ts are == 'i'.
-      Cell cell = cellBuilder.setRow(bytes).setFamily(Bytes.toBytes("TimestampFamily")).setQualifier(Bytes.toBytes("Timestamp"))
+      Cell cell = cellBuilder.setRow(bytes).setFamily(Bytes.toBytes("TimeFamily")).setQualifier(Bytes.toBytes("CellBirthTime"))
           .setType(Cell.Type.Put).setTimestamp(i).setValue(bytes).build();
       cells.add(cell);
     }
