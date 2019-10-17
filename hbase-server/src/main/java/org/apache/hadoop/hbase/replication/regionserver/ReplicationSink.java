@@ -223,6 +223,9 @@ public class ReplicationSink {
               String cfamily = Bytes.toString(cell.getFamilyArray(), cell.getFamilyOffset(), cell.getFamilyLength());
 
               LOG.info("HACKTEST4: replicateEntries from"+replicationClusterId+":"+qualifier+":"+cfamily);
+              LOG.info("HACKTEST4.1: replicateEntries from"+cell.getFamilyArray()+":"+cell.getFamilyOffset()+":"+cell.getFamilyLength());
+              LOG.info("HACKTEST4.2: replicateEntries from"+cell.getQualifierArray()+":"+cell.getQualifierOffset()+":"+cell.getQualifierLength());
+
               if (qualifier.equals("CellBirthTime") && cfamily.equals("TimeFamily")) {
                 Long tsFromCell = Bytes.toLong(cell.getValueArray(), cell.getValueOffset(), cell.getValueLength());
                 long currentTS = EnvironmentEdgeManager.currentTime();
