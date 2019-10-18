@@ -237,6 +237,7 @@ public class ReplicationSink {
                 long age = currentTS - tsFromCell;
                 replicationMetrcsWriter.write("ReplicationLag:"+age+":"+replicationClusterId+"\n");
                 replicationMetrcsWriter.flush();
+                this.metrics.setAgeEEOfLastAppliedOp(age);
               }
             }}
             continue;

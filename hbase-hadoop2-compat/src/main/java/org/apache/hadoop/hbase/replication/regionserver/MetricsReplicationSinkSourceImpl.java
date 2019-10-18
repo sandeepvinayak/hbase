@@ -26,12 +26,15 @@ import org.apache.yetus.audience.InterfaceAudience;
 public class MetricsReplicationSinkSourceImpl implements MetricsReplicationSinkSource {
 
   private final MutableHistogram ageHist;
+  private final MutableHistogram ageEEHist;
   private final MutableFastCounter batchesCounter;
   private final MutableFastCounter opsCounter;
   private final MutableFastCounter hfilesCounter;
 
   public MetricsReplicationSinkSourceImpl(MetricsReplicationSourceImpl rms) {
     ageHist = rms.getMetricsRegistry().getHistogram(SINK_AGE_OF_LAST_APPLIED_OP);
+    ageEEHist = rms.getMetricsRegistry().getHistogram(SINK_AGE_EE_OF_LAST_APPLIED_OP);
+
     batchesCounter = rms.getMetricsRegistry().getCounter(SINK_APPLIED_BATCHES, 0L);
     opsCounter = rms.getMetricsRegistry().getCounter(SINK_APPLIED_OPS, 0L);
     hfilesCounter = rms.getMetricsRegistry().getCounter(SINK_APPLIED_HFILES, 0L);
@@ -39,6 +42,10 @@ public class MetricsReplicationSinkSourceImpl implements MetricsReplicationSinkS
 
   @Override public void setLastAppliedOpAge(long age) {
     ageHist.add(age);
+  }
+
+  @Override public void setLastAppliedOpAgeEE(long age) {
+    ageEEHist.add(age);
   }
 
   @Override public void incrAppliedBatches(long batches) {

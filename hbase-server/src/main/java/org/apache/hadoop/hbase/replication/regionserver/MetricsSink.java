@@ -53,6 +53,16 @@ public class MetricsSink {
   }
 
   /**
+   * Set the age of the last applied operation
+   *
+   * @param timestamp The timestamp of the last operation applied.
+   * @return the age that was set
+   */
+  public void setAgeEEOfLastAppliedOp(long timestamp) {
+    mss.setLastAppliedOpAgeEE(timestamp);
+  }
+
+  /**
    * Refreshing the age makes sure the value returned is the actual one and
    * not the one set a replication time
    * @return refreshed age
