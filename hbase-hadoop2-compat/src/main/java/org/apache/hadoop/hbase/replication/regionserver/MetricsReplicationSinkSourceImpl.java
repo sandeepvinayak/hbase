@@ -34,7 +34,6 @@ public class MetricsReplicationSinkSourceImpl implements MetricsReplicationSinkS
   public MetricsReplicationSinkSourceImpl(MetricsReplicationSourceImpl rms) {
     ageHist = rms.getMetricsRegistry().getHistogram(SINK_AGE_OF_LAST_APPLIED_OP);
     ageEEHist = rms.getMetricsRegistry().getHistogram(SINK_AGE_EE_OF_LAST_APPLIED_OP);
-
     batchesCounter = rms.getMetricsRegistry().getCounter(SINK_APPLIED_BATCHES, 0L);
     opsCounter = rms.getMetricsRegistry().getCounter(SINK_APPLIED_OPS, 0L);
     hfilesCounter = rms.getMetricsRegistry().getCounter(SINK_APPLIED_HFILES, 0L);

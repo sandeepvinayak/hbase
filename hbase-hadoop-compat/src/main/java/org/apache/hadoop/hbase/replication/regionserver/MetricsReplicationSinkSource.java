@@ -24,7 +24,6 @@ import org.apache.yetus.audience.InterfaceAudience;
 public interface MetricsReplicationSinkSource {
   public static final String SINK_AGE_OF_LAST_APPLIED_OP = "sink.ageOfLastAppliedOp";
   public static final String SINK_AGE_EE_OF_LAST_APPLIED_OP = "sink.ageEEOfLastAppliedOp";
-
   public static final String SINK_APPLIED_BATCHES = "sink.appliedBatches";
   public static final String SINK_APPLIED_OPS = "sink.appliedOps";
   public static final String SINK_APPLIED_HFILES = "sink.appliedHFiles";

@@ -53,7 +53,7 @@ public class MetricsSink {
   }
 
   /**
-   * Set the age of the last applied operation
+   * Set the End to End age of the last replicated cell
    *
    * @param timestamp The timestamp of the last operation applied.
    * @return the age that was set

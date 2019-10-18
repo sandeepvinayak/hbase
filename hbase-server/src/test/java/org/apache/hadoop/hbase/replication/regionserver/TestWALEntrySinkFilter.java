@@ -171,10 +171,8 @@ public class TestWALEntrySinkFilter {
 
 
   /**
-   * Test filter. Filter will filter out any write time that is <= 5 (BOUNDARY). We count how many
-   * items we filter out and we count how many cells make it through for distribution way down below
-   * in the Table#batch implementation. Puts in place a custom DevNullConnection so we can insert
-   * our counting Table.
+   * Test filter. Filter will filter out cells from ReplicationMetaDataTable with Columns family
+   * TimeEamily and Qualifier CellBirthTime and will write the results to the file and to the metrics
    * @throws IOException
    */
   @Test
@@ -193,11 +191,9 @@ public class TestWALEntrySinkFilter {
     AdminProtos.WALEntry.Builder entryBuilder = AdminProtos.WALEntry.newBuilder();
     // Need a tablename.
     ByteString tableName = ByteString.copyFromUtf8(TableName.valueOf("ReplicationMetaDataTable").toString());
-    // Add WALEdit Cells to Cells List. The way edits arrive at the sink is with protos
-    // describing the edit with all Cells from all edits aggregated in a single CellScanner.
+
     final List<Cell> cells = new ArrayList<>();
-    int count = BOUNDARY * 2;
-    for (int i = 0; i < count; i++) {
+    for (int i = 0; i < 10; i++) {
       Thread.sleep(10);
 
       ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
