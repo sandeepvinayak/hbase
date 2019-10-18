@@ -22,6 +22,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.net.SocketAddress;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -198,6 +199,11 @@ public class TestWALEntrySinkFilter {
     int count = BOUNDARY * 2;
     for (int i = 0; i < count; i++) {
       Thread.sleep(10);
+
+      ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
+      buffer.putLong(EnvironmentEdgeManager.currentTime());
+      byte[] value = buffer.array();
+
       byte[] bytes = Bytes.toBytes(EnvironmentEdgeManager.currentTime());
       // Create a wal entry. Everything is set to the current index as bytes or int/long.
       entryBuilder.clear();
@@ -211,7 +217,7 @@ public class TestWALEntrySinkFilter {
       CellBuilder cellBuilder = CellBuilderFactory.create(CellBuilderType.DEEP_COPY);
       // Make cells whose row, family, cell, value, and ts are == 'i'.
       Cell cell = cellBuilder.setRow(bytes).setFamily(Bytes.toBytes("TimeFamily")).setQualifier(Bytes.toBytes("CellBirthTime"))
-          .setType(Cell.Type.Put).setTimestamp(i).setValue(bytes).build();
+          .setType(Cell.Type.Put).setTimestamp(i).setValue(value).build();
       cells.add(cell);
     }
     // Now wrap our cells array in a CellScanner that we can pass in to replicateEntries. It has

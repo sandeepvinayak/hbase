@@ -228,8 +228,10 @@ public class ReplicationSink {
 
               if (qualifier.equals("CellBirthTime") && cfamily.equals("TimeFamily")) {
                 Long tsFromCell = Bytes.toLong(cell.getValueArray(), cell.getValueOffset(), cell.getValueLength());
+                String valueFromCell = Bytes.toString(cell.getValueArray(), cell.getValueOffset(), cell.getValueLength());
+
                 long currentTS = EnvironmentEdgeManager.currentTime();
-                LOG.info("HACKTEST6: replicateEntries from"+replicationClusterId+":"+tsFromCell+":"+currentTS);
+                LOG.info("HACKTEST6: replicateEntries from"+replicationClusterId+":"+tsFromCell+":"+currentTS+":"+valueFromCell);
                 LOG.info("HACKTEST7: replicateEntries from"+cell.getValueArray()+":"+cell.getValueOffset()+":"+cell.getValueLength());
 
                 long age = currentTS - tsFromCell;
