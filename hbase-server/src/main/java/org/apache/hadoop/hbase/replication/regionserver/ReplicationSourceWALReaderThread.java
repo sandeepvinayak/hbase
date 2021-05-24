@@ -192,7 +192,7 @@ public class ReplicationSourceWALReaderThread extends Thread {
               sleepMultiplier++;
             } else {
               LOG.error("Failed to read stream of replication entries "
-                + "or replication filter is recovering " + e);
+                + "or replication filter is recovering ", e);
             }
             Threads.sleep(sleepForRetries * sleepMultiplier);
           }
